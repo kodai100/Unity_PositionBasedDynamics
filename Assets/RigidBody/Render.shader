@@ -39,6 +39,7 @@
 				output.pos = float4(_Particles[id].oldPos, 1);
 				output.tex = float2(0, 0);
 				output.col = float4(0.5 + normalize(_Particles[id].newPos - _Particles[id].oldPos) / 2, 1);
+				// output.col = float4(0.5 + _Particles[id].oldPos/60, 1);
 
 				return output;
 			}
@@ -75,7 +76,7 @@
 
 			fixed4 frag(v2g i) : COLOR{
 				float4 col = tex2D(_MainTex, i.tex) * i.col;
-				if (col.a < 0.4) discard;
+				if (col.a < 0.9) discard;
 				return col;
 			}
 
