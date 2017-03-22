@@ -1,0 +1,51 @@
+﻿#pragma kernel Update
+#pragma kernel Constraint
+
+#define SIMULATION_BLOCK_SIZE 32
+
+struct Particle {
+	float3 oldPos;
+	float3 newPos;
+};
+
+int _MaxParticleNum;
+float _DT;
+float3 _Gravity;
+float3 _Range;
+
+StructuredBuffer<Particle> bufferRead;
+RWStructuredBuffer<Particle> bufferWrite;
+
+[numthreads(SIMULATION_BLOCK_SIZE,1,1)]
+void Update (uint3 DTid : SV_DispatchThreadID) {
+
+	uint id = DTid.x;
+
+	float3 velocity = (bufferRead[id].newPos - bufferRead[id].oldPos) / _DT;
+	velocity += _Gravity * _DT;
+
+	bufferWrite[id].oldPos = bufferRead[id].newPos;
+	bufferWrite[id].newPos += velocity * _DT;
+}
+
+
+[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+void Constraint(uint3 DTid : SV_DispatchThreadID) {
+
+	uint id = DTid.x;
+
+	float3 position = bufferWrite[id].newPos;
+	position.y = clamp(position.y, 0, _Range.y);
+	bufferWrite[id].newPos = position;
+
+	// point同士が衝突していたら離す
+	for(int j = 0; j < _MaxParticleNum; j++) {
+		if (id == j) continue;
+
+		float3 vec = bufferWrite[j].newPos - bufferWrite[id].newPos;
+		if (length(vec) < 1) {
+			bufferWrite[id].newPos -= normalize(vec) * (1 - length(vec)) / 2;
+			bufferWrite[j].newPos  += normalize(vec) * (1 - length(vec)) / 2;
+		}
+	}
+}
